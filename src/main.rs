@@ -1,10 +1,11 @@
 use std::io::Cursor;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Mutex};
 
-use actix_web::{App, get, HttpResponse, HttpServer, post, Responder, web};
+use actix_web::{App, get, HttpRequest, HttpResponse, HttpServer, post, Responder, web};
 use actix_web::http::StatusCode;
-use actix_web::web::Bytes;
+use actix_web::web::{Bytes, Data};
+use log::info;
 
 struct AppState {
     current_image: Mutex<Vec<u8>>,
@@ -17,19 +18,26 @@ async fn mainpage() -> impl Responder {
         .body(include_str!("../static/index.html"))
 }
 
-#[get("/thestream")]
-async fn get_image(data: web::Data<AppState>) -> impl Responder {
-    let cloned_img = data.current_image.lock().unwrap().clone();
+#[get("/get")]
+async fn get_image(req: HttpRequest) -> impl Responder {
+    let state = req.app_data::<Data<AppState>>().unwrap();
+    let current_img = state.current_image.lock().unwrap();
+    let cloned_img = current_img.clone();
+    drop(current_img);
+
+    info!("Sending bytes with length {}", cloned_img.len());
 
     Bytes::from(cloned_img)
 }
 
 
-#[post("/thestream")]
-async fn set_image(req_body: String, data: web::Data<AppState>) -> impl Responder {
-    let mut current_image = data.current_image.lock().unwrap();
+#[post("/new")]
+async fn set_image(req: HttpRequest, body: Bytes) -> impl Responder {
+    let state = req.app_data::<Data<AppState>>().unwrap();
+    let mut current_image = state.current_image.lock().unwrap();
 
-    *current_image = req_body.as_bytes().to_vec();
+    *current_image = body.to_vec();
+    info!("Received bytes with length {}", current_image.len());
 
     HttpResponse::build(StatusCode::OK)
 }
@@ -44,20 +52,23 @@ fn read_jpeg(p: &Path) -> Vec<u8> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let first_img = read_jpeg(Path::new("../static/first_frame.jpeg"));
+    env_logger::init();
 
-    HttpServer::new(|| {
+    let first_img = read_jpeg(Path::new("static/first_frame.jpeg"));
+    let app_data = Data::new(AppState {
+        current_image: Mutex::new(first_img),
+    });
+
+    HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(AppState {
-                current_image: Mutex::new(first_img),
-            }))
             .service(mainpage)
-            .service(get_image)
-            .service(set_image)
-        // .service(echo)
-        // .route("/hey", web::get().to(manual_hello))
+            .service(web::scope("/thestream")
+                .app_data(app_data.clone())
+                .service(get_image)
+                .service(set_image)
+            )
     })
-        .bind(("127.0.0.1", 8080))?
+        .bind(("0.0.0.0", 8080))?
         .run()
         .await
 }

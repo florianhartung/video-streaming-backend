@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <title>Live Video Streaming Example</title>
+    </head>
+    <body>
+        Stream:
+        <img id="imagestream" src="/thestream" alt="video stream"/>
+    </body>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            setInterval(function () {
+                // Append a timestamp to the URL to ensure the image isn't cached
+                let newSrc = "/thestream/get?" + new Date().getTime();
+                document.getElementById("imagestream").src = newSrc;
+            }, 10); // Refresh every 1000 milliseconds (1 second)
+        });
+    </script>
+</html>
