@@ -21,6 +21,6 @@ COPY ./static ./static
 RUN rm ./target/release/deps/video_streaming*
 RUN cargo install --path .
 
-EXPOSE 8080/TCP
+EXPOSE 80/TCP
 
 CMD ["video-streaming"]

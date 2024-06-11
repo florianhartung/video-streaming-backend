@@ -5,14 +5,29 @@
     <body>
         Stream:
         <img id="imagestream" src="/thestream" alt="video stream"/>
+        <input id="updateInterval" type="number"/>
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                function update() {
+                    // Append a timestamp to the URL to ensure the image isn't cached
+                    let newSrc = "/thestream/get?" + new Date().getTime();
+                    document.getElementById("imagestream").src = newSrc;
+                }
+
+
+                let last_update_interval = 10
+                let interval_id = setInterval(update, last_update_interval); // Refresh every 1000 milliseconds (1 second)
+
+                function newinterval(obj) {
+                    clearInterval(interval_id)
+                    setInterval(update, obj.value)
+                }
+
+                let updateIntervalElem = document.getElementById("updateInterval")
+                updateIntervalElem.addEventListener('change', function () {
+                    newinterval(this)
+                }, false)
+            });
+        </script>
     </body>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            setInterval(function () {
-                // Append a timestamp to the URL to ensure the image isn't cached
-                let newSrc = "/thestream/get?" + new Date().getTime();
-                document.getElementById("imagestream").src = newSrc;
-            }, 10); // Refresh every 1000 milliseconds (1 second)
-        });
-    </script>
 </html>
